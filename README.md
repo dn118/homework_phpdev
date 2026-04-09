@@ -19,22 +19,8 @@ A Laravel + Livewire application for viewing, hiding, and favoriting articles fr
 ## Quick Start
 
 ```bash
-# Clone and install
-composer install
-
-# Setup environment
-cp .env.example .env
-php artisan key:generate
-
-# Run migrations (creates SQLite database)
-php artisan migrate
-
-# Install frontend assets
-npm install
-npm run build
-
-# Start dev server
-php artisan serve
+make setup
+make run
 ```
 
 Visit http://localhost:8000 and log in. Articles will sync automatically on first visit.
@@ -62,8 +48,8 @@ ARTICLES_TIMEOUT=10
 
 ```bash
 # Development
-php artisan serve              # Start dev server
-php artisan articles:sync       # Manually sync articles
+make run                      # Start dev server
+php artisan articles:sync     # Manually sync articles
 
 # Testing
 make test                     # Run all tests
@@ -77,6 +63,18 @@ make code_check               # Run all checks (cs_fix + stan + audit)
 
 # Database
 make fresh                   # Reset database and run migrations
+```
+
+`make setup` runs:
+
+```bash
+composer install
+cp .env.example .env
+touch database/database.sqlite
+php artisan key:generate
+php artisan migrate
+npm install
+npm run build
 ```
 
 ## Project Structure

@@ -1,4 +1,4 @@
-.PHONY: help install setup test code_check cs_fix lint stan audit
+.PHONY: help install setup run test code_check cs_fix lint stan audit fresh
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[32m%-15s\033[0m %s\n", $$1, $$2}'
@@ -6,13 +6,17 @@ help: ## Show this help message
 install: ## Install dependencies
 	composer install
 
-setup: ## Full setup (install, key:generate, migrate, npm install, build)
+setup: ## Full local setup
 	composer install
 	cp .env.example .env
+	touch database/database.sqlite
 	php artisan key:generate
 	php artisan migrate
 	npm install
 	npm run build
+
+run: ## Start local development server
+	php artisan serve
 
 test: ## Run tests
 	php artisan test
