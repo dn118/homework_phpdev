@@ -1,110 +1,64 @@
 # Laravel + Livewire Article Favorites
 
-Take-home project implementing:
+## Requirements
 
-- registration, login, logout
-- email verification
-- article listing from a public API (Hacker News)
-- per-user hide/unhide
-- per-user favorite/unfavorite
-- favorites pinned to top with newest favorite first
+- Docker Desktop (or Docker Engine + Docker Compose plugin)
+- Python 3 (only for optional E2E script)
 
-## Stack
-
-- PHP 8.4, Laravel 13, Livewire
-- Docker runtime with MySQL 8.4 + Mailpit
-- Pest/PHPUnit for tests
-- Laravel Pint + Larastan/PHPStan
-
-## Prerequisites
-
-- Docker + Docker Compose
-- `make`
-
-## Quick Start
+## First Run
 
 ```bash
-make dev
+docker compose up -d --build
+docker compose exec app sh /var/www/html/docker/app/setup.sh
 ```
 
-`make dev` will:
+## Open Project
 
-1. create `.env.docker` from `.env.docker.example` (if missing)
-2. generate `APP_KEY` in `.env.docker` (if missing)
-3. build and start containers
-4. run database migrations + seeders
-5. sync articles from Hacker News
+- App URL: http://localhost:8782
+- Mailpit URL: http://localhost:8782/mailpit
 
-## URLs
+## Useful Commands
 
-- App: http://localhost:8780
-- Mailpit UI: http://localhost:8025
-
-## Seeded User
-
-- email: `admin@admin.com`
-- password: `qweqweqwe`
-- email status: verified
-
-## Day-to-Day Commands
+Run tests:
 
 ```bash
-make dev
-make reset
-make up
-make down
-make restart
-make ps
-make logs
-make logs_db
-make shell
-make sync_articles
-make test
-make e2e
+docker compose exec app php artisan test
 ```
 
-## Fast Verification/Reset Links
-
-Generate an email confirmation link (without opening Mailpit):
+Run E2E auth flow:
 
 ```bash
-make email_confirmation_link EMAIL=user@example.com
+python3 scripts/e2e_test.py
 ```
 
-Generate a password reset link:
+View logs:
 
 ```bash
-make password_reset_link EMAIL=user@example.com
+docker compose logs -f app
+docker compose logs -f nginx
+docker compose logs -f queue
 ```
 
-## Mailpit Workflow
-
-1. Register a new user in the app.
-2. Open Mailpit at `http://localhost:8025`.
-3. Open the email.
-4. Click the confirmation link.
-
-## End-to-End Flow Test
-
-Run full browserless HTTP flow:
+Stop all services:
 
 ```bash
-make e2e
+docker compose down
 ```
 
-It validates: register, email verification, login, password reset request, password reset, and logout.
-
-## Quality Commands
+Reset all containers and database volume:
 
 ```bash
-make cs_fix
-make stan
-make audit
-make code_check
+docker compose down -v --remove-orphans
+docker compose up -d --build
+docker compose exec app sh /var/www/html/docker/app/setup.sh
 ```
 
 ## Notes
 
-- Runtime DB is MySQL in Docker.
-- Tests run in Docker via `make test`.
-- External API calls are isolated to article sync; UI reads from local DB.
+- No host PHP is required.
+- `setup.sh` is idempotent and is the only bootstrap script.
+- `entrypoint.sh` is minimal runtime only (no migrations, no composer install, no APP_KEY generation).
+- Articles are synced from Hacker News during setup.
+- Seeded user:
+  - email: `admin@admin.com`
+  - password: `qweqweqwe`

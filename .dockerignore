@@ -3,12 +3,9 @@
 .env
 .env.*
 !.env.example
-!.env.docker
-!.env.docker.example
 public/build
 node_modules
 .vscode
 .idea
-*.md
 docker-compose*.yaml
 docker-compose*.yml

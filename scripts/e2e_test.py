@@ -7,7 +7,7 @@ import urllib.parse
 import urllib.request
 from http.cookiejar import CookieJar
 
-BASE_URL = "http://localhost:8780"
+BASE_URL = "http://localhost:8782"
 PASSWORD = "Qweqwe123!"
 NEW_PASSWORD = "Qweqwe123!New"
 
@@ -54,6 +54,14 @@ def artisan_link(command: str, email: str) -> str:
     return url_match.group(0)
 
 
+def normalize_to_base(url: str) -> str:
+    base = urllib.parse.urlparse(BASE_URL)
+    parsed = urllib.parse.urlparse(url)
+    return urllib.parse.urlunparse(
+        (base.scheme, base.netloc, parsed.path, parsed.params, parsed.query, parsed.fragment)
+    )
+
+
 def run_command(command: str) -> None:
     result = subprocess.run(["bash", "-lc", command], capture_output=True, text=True)
     if result.returncode != 0:
@@ -91,7 +99,7 @@ def main() -> None:
     )
     ok("register")
 
-    verify_url = artisan_link("verify:link", email)
+    verify_url = normalize_to_base(artisan_link("verify:link", email))
     _, verified_url = get(verify_url, opener)
     if "/dashboard" not in verified_url:
         fail(f"Email verification did not end on dashboard: {verified_url}")
@@ -129,7 +137,7 @@ def main() -> None:
     )
     ok("password reset request")
 
-    reset_url = artisan_link("password:link", email)
+    reset_url = normalize_to_base(artisan_link("password:link", email))
     token_match = re.search(r"/reset-password/([^?]+)", reset_url)
     if not token_match:
         fail("Password reset URL token not found")
