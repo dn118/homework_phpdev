@@ -1,7 +1,7 @@
 COMPOSE := docker compose
 EMAIL ?=
 
-.PHONY: help dev reset up down restart ps logs logs_db shell test test_local cs_fix stan audit code_check sync_articles email_confirmation_link password_reset_link prepare_env wait_db
+.PHONY: help dev reset up down restart ps logs logs_db shell test test_local e2e cs_fix stan audit code_check sync_articles email_confirmation_link password_reset_link prepare_env wait_db
 
 help: ## Show available commands
 	grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS=":.*?## "}; {printf "%-28s %s\n", $$1, $$2}'
@@ -10,7 +10,7 @@ prepare_env: ## Create .env.docker and generate APP_KEY if missing
 	if [ ! -f .env.docker ]; then cp .env.docker.example .env.docker; fi
 	key=$$(grep '^APP_KEY=' .env.docker | cut -d= -f2-); \
 	if [ -z "$$key" ] || [ "$$key" = "generated_after_setup" ]; then \
-		new_key=$$(php -r 'echo "base64:".base64_encode(random_bytes(32));'); \
+		new_key="base64:$$(head -c 32 /dev/urandom | base64 | tr -d '\n')"; \
 		if grep -q '^APP_KEY=' .env.docker; then \
 			sed -i "s|^APP_KEY=.*|APP_KEY=$$new_key|" .env.docker; \
 		else \
@@ -71,6 +71,9 @@ test: ## Run test suite in Docker
 
 test_local: ## Run tests on host machine (if local PHP deps are installed)
 	php artisan test
+
+e2e: ## Run end-to-end auth flow against running Docker app
+	python3 e2e_test.py
 
 sync_articles: ## Sync articles from Hacker News
 	$(COMPOSE) exec -T app php artisan articles:sync

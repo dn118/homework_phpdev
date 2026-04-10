@@ -60,6 +60,7 @@ make logs_db
 make shell
 make sync_articles
 make test
+make e2e
 ```
 
 ## Fast Verification/Reset Links
@@ -82,6 +83,16 @@ make password_reset_link EMAIL=user@example.com
 2. Open Mailpit at `http://localhost:8025`.
 3. Open the email.
 4. Click the confirmation link.
+
+## End-to-End Flow Test
+
+Run full browserless HTTP flow:
+
+```bash
+make e2e
+```
+
+It validates: register, email verification, login, password reset request, password reset, and logout.
 
 ## Quality Commands
 
