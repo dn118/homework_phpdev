@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Article;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Pool;
 
 class HackerNewsArticleProvider
 {
@@ -24,12 +25,18 @@ class HackerNewsArticleProvider
         $articlesToUpsert = [];
         $timestamp = now();
 
+        $responses = Http::pool(fn (Pool $pool) => collect($storyIds)
+            ->mapWithKeys(fn ($id) => [
+                (string) $id => $pool->as((string) $id)->timeout($timeout)->get($baseUrl.'item/'.$id.'.json'),
+            ])
+            ->all());
+
         foreach ($storyIds as $id) {
             $externalKey = (string) $id;
-            $itemUrl = $baseUrl.'item/'.$id.'.json';
-            $articleData = Http::timeout($timeout)->get($itemUrl)->json();
+            $response = $responses[$externalKey] ?? null;
+            $articleData = $response?->successful() ? $response->json() : null;
 
-            if (! $articleData || ! isset($articleData['title'])) {
+            if (! is_array($articleData) || ! isset($articleData['title'])) {
                 continue;
             }
 

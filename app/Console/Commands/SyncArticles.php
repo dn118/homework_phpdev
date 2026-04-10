@@ -8,13 +8,19 @@ use Illuminate\Console\Command;
 
 class SyncArticles extends Command
 {
-    protected $signature = 'articles:sync {--count=30 : Number of articles to fetch}';
+    protected $signature = 'articles:sync {--count=30 : Number of articles to fetch} {--if-empty : Only sync when the articles table is empty}';
 
     protected $description = 'Sync articles from Hacker News API';
 
     public function handle(): int
     {
         $count = (int) $this->option('count');
+
+        if ($this->option('if-empty') && Article::query()->exists()) {
+            $this->info('Articles already exist. Skipping sync.');
+
+            return self::SUCCESS;
+        }
 
         $this->info('Syncing articles from Hacker News...');
 

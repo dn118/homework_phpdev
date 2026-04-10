@@ -6,13 +6,23 @@ use App\Livewire\ArticleList;
 use App\Models\Article;
 use App\Models\User;
 use App\Models\UserArticlePreference;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class ArticleTest extends TestCase
 {
-    use RefreshDatabase;
+    use LazilyRefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(PreventRequestForgery::class);
+    }
 
     public function test_user_can_register(): void
     {
@@ -41,6 +51,44 @@ class ArticleTest extends TestCase
 
         $response->assertRedirect('/dashboard');
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_user_can_verify_email(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'email_verified_at' => null,
+        ]);
+
+        $this->assertNull($user->email_verified_at);
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            [
+                'id' => $user->id,
+                'hash' => sha1($user->email),
+            ]
+        );
+
+        $response = $this->actingAs($user)->get($verificationUrl);
+
+        $response->assertRedirect('/dashboard?verified=1');
+
+        $user->refresh();
+        $this->assertNotNull($user->email_verified_at);
+    }
+
+    public function test_unverified_user_cannot_access_dashboard(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'test@example.com',
+            'email_verified_at' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/dashboard')
+            ->assertRedirect('/verify-email');
     }
 
     public function test_guest_cannot_access_dashboard(): void
@@ -171,5 +219,99 @@ class ArticleTest extends TestCase
 
                 return in_array($article1->id, $ids) && in_array($article2->id, $ids);
             });
+    }
+
+    public function test_empty_state_explains_how_articles_are_populated(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)->test(ArticleList::class)
+            ->assertSee('No visible articles right now.')
+            ->assertSee('Run `php artisan articles:sync` or restart the local server to populate articles.');
+
+        $this->assertDatabaseCount('articles', 0);
+    }
+
+    public function test_hacker_news_native_posts_show_discussion_link(): void
+    {
+        $user = User::factory()->create();
+        $article = Article::factory()->create([
+            'external_key' => '12345',
+            'title' => 'Ask HN Example',
+            'url' => null,
+        ]);
+
+        Livewire::actingAs($user)->test(ArticleList::class)
+            ->assertSee($article->title)
+            ->assertSee('Open Hacker News discussion')
+            ->assertSee('https://news.ycombinator.com/item?id=12345');
+    }
+
+    public function test_hidden_article_can_be_restored(): void
+    {
+        $user = User::factory()->create();
+        $article = Article::factory()->create();
+
+        Livewire::actingAs($user)->test(ArticleList::class)
+            ->call('hide', (string) $article->id)
+            ->call('unhide', (string) $article->id);
+
+        $this->assertDatabaseHas('user_article_preferences', [
+            'user_id' => $user->id,
+            'article_id' => $article->id,
+            'hidden_at' => null,
+        ]);
+    }
+
+    public function test_user_can_request_password_reset_link(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->post('/forgot-password', [
+            'email' => $user->email,
+        ]);
+
+        $response->assertSessionHas('status');
+    }
+
+    public function test_user_can_reset_password_with_valid_token(): void
+    {
+        $user = User::factory()->create();
+        $newPassword = 'NewPassword123!';
+
+        $token = Password::createToken($user);
+
+        $response = $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => $newPassword,
+            'password_confirmation' => $newPassword,
+        ]);
+
+        $response->assertRedirect('/login');
+        $this->assertTrue(Hash::check($newPassword, $user->fresh()->password));
+    }
+
+    public function test_user_can_login_with_new_password_after_reset(): void
+    {
+        $user = User::factory()->create();
+        $newPassword = 'NewPassword123!';
+
+        $token = Password::createToken($user);
+
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => $newPassword,
+            'password_confirmation' => $newPassword,
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => $user->email,
+            'password' => $newPassword,
+        ]);
+
+        $response->assertRedirect('/dashboard');
+        $this->assertAuthenticatedAs($user);
     }
 }

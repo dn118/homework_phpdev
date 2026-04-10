@@ -1,97 +1,99 @@
-# Laravel Hacker News Articles
+# Laravel + Livewire Article Favorites
 
-A Laravel + Livewire application for viewing, hiding, and favoriting articles from Hacker News.
+Take-home project implementing:
+
+- registration, login, logout
+- email verification
+- article listing from a public API (Hacker News)
+- per-user hide/unhide
+- per-user favorite/unfavorite
+- favorites pinned to top with newest favorite first
 
 ## Stack
 
-- Laravel 13.x with Livewire
-- SQLite for local development
-- Pest for testing
-- Laravel Pint for code formatting
-- Larastan for static analysis
+- PHP 8.4, Laravel 13, Livewire
+- Docker runtime with MySQL 8.4 + Mailpit
+- Pest/PHPUnit for tests
+- Laravel Pint + Larastan/PHPStan
 
-## Requirements
+## Prerequisites
 
-- PHP 8.3+
-- Composer
-- SQLite (included with PHP)
+- Docker + Docker Compose
+- `make`
 
 ## Quick Start
 
 ```bash
-make setup
-make run
+make dev
 ```
 
-Visit http://localhost:8000 and log in. Articles will sync automatically on first visit.
+`make dev` will:
 
-## Article Sync Behavior
+1. create `.env.docker` from `.env.docker.example` (if missing)
+2. generate `APP_KEY` in `.env.docker` (if missing)
+3. build and start containers
+4. run database migrations + seeders
+5. sync articles from Hacker News
 
-The app uses a sync-on-demand approach:
+## URLs
 
-1. When an authenticated user visits the articles page
-2. If the local `articles` table is empty, articles are automatically fetched from Hacker News
-3. Subsequent visits render from local database (fast, no network dependency)
-4. Manual sync: `php artisan articles:sync`
+- App: http://localhost:8780
+- Mailpit UI: http://localhost:8025
 
-## Configuration
+## Seeded User
 
-Edit `.env` or use environment variables:
+- email: `admin@admin.com`
+- password: `qweqweqwe`
+- email status: verified
 
-```env
-HACKERNEWS_BASE_URL=https://hacker-news.firebaseio.com/v0/
-ARTICLES_SYNC_COUNT=30
-ARTICLES_TIMEOUT=10
-```
-
-## Commands
+## Day-to-Day Commands
 
 ```bash
-# Development
-make run                      # Start dev server
-php artisan articles:sync     # Manually sync articles
-
-# Testing
-make test                     # Run all tests
-php artisan test              # Alternative: run tests
-
-# Code Quality
-make cs_fix                   # Format code with Pint
-make stan                     # Run static analysis
-make audit                    # Run security audit
-make code_check               # Run all checks (cs_fix + stan + audit)
-
-# Database
-make fresh                   # Reset database and run migrations
+make dev
+make reset
+make up
+make down
+make restart
+make ps
+make logs
+make logs_db
+make shell
+make sync_articles
+make test
 ```
 
-`make setup` runs:
+## Fast Verification/Reset Links
+
+Generate an email confirmation link (without opening Mailpit):
 
 ```bash
-composer install
-cp .env.example .env
-touch database/database.sqlite
-php artisan key:generate
-php artisan migrate
-npm install
-npm run build
+make email_confirmation_link EMAIL=user@example.com
 ```
 
-## Project Structure
+Generate a password reset link:
 
-- `app/Livewire/ArticleList.php` - Main article list component
-- `app/Providers/HackerNewsArticleProvider.php` - Hacker News API integration
-- `app/Console/Commands/SyncArticles.php` - Artisan sync command
-- `config/articles.php` - Article provider configuration
-- `database/migrations/` - Articles and user preferences tables
+```bash
+make password_reset_link EMAIL=user@example.com
+```
 
-## Assumptions & Tradeoffs
+## Mailpit Workflow
 
-- SQLite is used for simplicity (no MySQL required)
-- Articles sync on first page load when the local cache is empty
-- Hidden and favorite states are independent per user
-- Manual `articles:sync` command available for refresh
+1. Register a new user in the app.
+2. Open Mailpit at `http://localhost:8025`.
+3. Open the email.
+4. Click the confirmation link.
 
-## Article Source
+## Quality Commands
 
-Hacker News Firebase API: https://hacker-news.firebaseio.com/v0/
+```bash
+make cs_fix
+make stan
+make audit
+make code_check
+```
+
+## Notes
+
+- Runtime DB is MySQL in Docker.
+- Tests run in Docker via `make test`.
+- External API calls are isolated to article sync; UI reads from local DB.
